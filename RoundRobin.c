@@ -68,7 +68,6 @@ void enqueue(Queue *q, process item)
         q->rear->next = newNode;
     }
     q->rear = newNode;
-
 }
 
 process dequeue(Queue *q)
@@ -192,12 +191,10 @@ void executeProcesses(int nb_processus, process *tableau)
 
     while (completed_processes < nb_processus)
     {
-        printf("while 1");
         // Enqueue arriving processes into appropriate queues based on execution time
         for (int i = 0; i < nb_processus; i++)
         {
-            printf("for 1");
-            if (sortedProcesses[i].DA == current_time)
+            if (sortedProcesses[i].DA <= current_time)
             {
                 if (sortedProcesses[i].TE >= 0 && sortedProcesses[i].TE <= 3)
                 {
@@ -223,13 +220,14 @@ void executeProcesses(int nb_processus, process *tableau)
         Queue *queues[3] = {&queue1, &queue2, &queue3}; // Array of pointers to queues
         for (int i = 0; i < 3; i++)
         {
-            printf("for 2");
             currentQueue = queues[i];
             int quantum = i + 1; // Quantum varies based on the queue number
-
+            if (isEmpty(currentQueue) == 1)
+            {
+                current_time++;
+            }
             while (isEmpty(currentQueue) == 0)
             {
-                printf("while 2");
                 process currentProcess = dequeue(currentQueue);
                 printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, currentProcess.NP, currentProcess.reste, currentProcess.completed);
 
@@ -249,29 +247,10 @@ void executeProcesses(int nb_processus, process *tableau)
                     completed_processes++;
                 }
 
-                // Enqueue processes arriving at the current time
-                while (completed_processes < nb_processus && current_time == sortedProcesses[completed_processes].DA)
-                {
-                    printf("while 3");
-                    if (sortedProcesses[completed_processes].TE >= 0 && sortedProcesses[completed_processes].TE <= 3)
-                    {
-                        enqueue(&queue1, sortedProcesses[completed_processes]);
-                    }
-                    else if (sortedProcesses[completed_processes].TE >= 4 && sortedProcesses[completed_processes].TE <= 6)
-                    {
-                        enqueue(&queue2, sortedProcesses[completed_processes]);
-                    }
-                    else
-                    {
-                        enqueue(&queue3, sortedProcesses[completed_processes]);
-                    }
-                    completed_processes++;
-                }
             }
         }
     }
 }
-
 
 // Function to display the scheduling of processes
 void displayScheduling(int nb_processus, process *tableau)
