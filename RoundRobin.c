@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
 
 typedef struct process
 {
@@ -175,6 +176,7 @@ void sortQueueByPriority(Queue *q)
 void executeProcesses(int nb_processus, process *tableau)
 {
     int current_time = 0;
+    int completed_processes = 0;
     Queue queue1, queue2, queue3;
     initializeQueue(&queue1);
     initializeQueue(&queue2);
@@ -182,71 +184,112 @@ void executeProcesses(int nb_processus, process *tableau)
 
     process *sortedProcesses = sortProcessesByArrival(nb_processus, tableau);
 
+    process *initialProcesses = (process *)malloc(sizeof(process) * nb_processus);
+    memcpy(initialProcesses, tableau, sizeof(process) * nb_processus);
+
     printf("Execution:\n");
     printf("Time\t| Process\t| Remaining\t| Completed\n");
     printf("------------------------------------------------\n");
 
-    int completed_processes = 0;
-    Queue *currentQueue = NULL; // Initialize currentQueue pointer
-
     while (completed_processes < nb_processus)
     {
-        // Enqueue arriving processes into appropriate queues based on execution time
+
         for (int i = 0; i < nb_processus; i++)
         {
             if (sortedProcesses[i].DA <= current_time)
             {
-                if (sortedProcesses[i].TE >= 0 && sortedProcesses[i].TE <= 3)
+                if (initialProcesses[i].TE >= 0 && initialProcesses[i].TE <= 3 && sortedProcesses[i].reste > 0)
                 {
                     enqueue(&queue1, sortedProcesses[i]);
+                    sortQueueByPriority(&queue1);
+                    if (isEmpty(&queue1) == 0)
+                    {
+                        process currentProcess = dequeue(&queue1);
+                        int k = 0;
+                        int quantum = 1;
+                        while (k < quantum && sortedProcesses[i].reste > 0)
+                        {
+                            sortedProcesses[i].completed++;
+                            sortedProcesses[i].reste--;
+                            printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[i].NP, sortedProcesses[i].reste, sortedProcesses[i].completed);
+                            k++;
+                            current_time++;
+                        }
+                        if (sortedProcesses[i].reste > 0)
+                        {
+                            enqueue(&queue1, currentProcess);
+                        }
+                        else
+                        {
+                            sortedProcesses[i].temfin = current_time;
+                            sortedProcesses[i].treponse = sortedProcesses[i].temfin - sortedProcesses[i].DA;
+                            sortedProcesses[i].tattant = sortedProcesses[i].treponse - sortedProcesses[i].TE;
+                            completed_processes++;
+                        }
+                    }
                 }
-                else if (sortedProcesses[i].TE >= 4 && sortedProcesses[i].TE <= 6)
+                else if (initialProcesses[i].TE >= 4 && initialProcesses[i].TE <= 6 && sortedProcesses[i].reste > 0)
                 {
+
                     enqueue(&queue2, sortedProcesses[i]);
+                    sortQueueByPriority(&queue2);
+                    if (isEmpty(&queue2) == 0)
+                    {
+                        process currentProcess = dequeue(&queue2);
+                        int k = 0;
+                        int quantum = 2;
+                        while (k < quantum && sortedProcesses[i].reste > 0)
+                        {
+
+                            sortedProcesses[i].completed++;
+                            sortedProcesses[i].reste--;
+                            printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[i].NP, sortedProcesses[i].reste, sortedProcesses[i].completed);
+                            k++;
+                            current_time++;
+                        }
+                        if (sortedProcesses[i].reste > 0)
+                        {
+                            enqueue(&queue2, currentProcess);
+                        }
+                        else
+                        {
+                            completed_processes++;
+                        }
+                    }
                 }
-                else
+                else if (initialProcesses[i].TE >= 7 && initialProcesses[i].TE <= 10 && sortedProcesses[i].reste > 0)
                 {
                     enqueue(&queue3, sortedProcesses[i]);
+                    sortQueueByPriority(&queue3);
+                    if (isEmpty(&queue3) == 0)
+                    {
+                        process currentProcess = dequeue(&queue3);
+                        int quantum = 3;
+                        int k = 0;
+                        while (k < quantum && sortedProcesses[i].reste > 0)
+                        {
+
+                            sortedProcesses[i].completed++;
+                            sortedProcesses[i].reste--;
+                            printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[i].NP, sortedProcesses[i].reste, sortedProcesses[i].completed);
+                            current_time++;
+                            k++;
+                        }
+                        if (sortedProcesses[i].reste > 0)
+                        {
+                            enqueue(&queue3, currentProcess);
+                        }
+                        else
+                        {
+                            completed_processes++;
+                        }
+                    }
                 }
             }
-        }
 
-        // Sort processes within each queue by priority
-        sortQueueByPriority(&queue1);
-        sortQueueByPriority(&queue2);
-        sortQueueByPriority(&queue3);
-
-        // Execute processes in round-robin manner
-        Queue *queues[3] = {&queue1, &queue2, &queue3}; // Array of pointers to queues
-        for (int i = 0; i < 3; i++)
-        {
-            currentQueue = queues[i];
-            int quantum = i + 1; // Quantum varies based on the queue number
-            if (isEmpty(currentQueue) == 1)
+            else
             {
                 current_time++;
-            }
-            while (isEmpty(currentQueue) == 0)
-            {
-                process currentProcess = dequeue(currentQueue);
-                printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, currentProcess.NP, currentProcess.reste, currentProcess.completed);
-
-                // Execute process for quantum time or remaining time if less than quantum
-                int execution_time = (currentProcess.reste < quantum) ? currentProcess.reste : quantum;
-                current_time += execution_time;
-                currentProcess.completed += execution_time;
-                currentProcess.reste -= execution_time;
-
-                // Re-enqueue the process if it has remaining execution time
-                if (currentProcess.reste > 0)
-                {
-                    enqueue(currentQueue, currentProcess);
-                }
-                else
-                {
-                    completed_processes++;
-                }
-
             }
         }
     }
