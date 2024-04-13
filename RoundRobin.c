@@ -93,32 +93,49 @@ process dequeue(Queue *q)
     return item;
 }
 
-// Function to create an array of processes
 void createProcessArray(int nb_processus, process **tableau)
 {
     *tableau = (process *)malloc(sizeof(process) * nb_processus);
+    if (*tableau == NULL)
+    {
+        printf("Memory allocation failed.\n");
+        exit(1);
+    }
+
     for (int i = 0; i < nb_processus; i++)
     {
-
         do
         {
             printf("Entrez la date d'arrivee du processus %d : ", i + 1);
-            scanf("%d", &((*tableau)[i].DA));
+            if (scanf("%d", &((*tableau)[i].DA)) != 1 || (*tableau)[i].DA < 0)
+            {
+                printf("Veuillez entrer une valeur entière positive pour la date d'arrivee.\n");
+                while (getchar() != '\n')
+                    ; // Clear input buffer
+            }
         } while ((*tableau)[i].DA < 0);
 
         do
         {
-            printf("Entrez le temps d'execution du processus %d : ", i + 1);
-            scanf("%d", &((*tableau)[i].TE));
-
-        } while ((*tableau)[i].TE < 1);
+            printf("Entrez le temps d'execution du processus %d (entre 1 et 10 inclusivement) : ", i + 1);
+            if (scanf("%d", &((*tableau)[i].TE)) != 1 || (*tableau)[i].TE < 1 || (*tableau)[i].TE > 10)
+            {
+                printf("Veuillez entrer une valeur entière entre 1 et 10 pour le temps d'execution.\n");
+                while (getchar() != '\n')
+                    ; // Clear input buffer
+            }
+        } while ((*tableau)[i].TE < 1 || (*tableau)[i].TE > 10);
 
         do
         {
-            printf("Entrez la priorite du processus %d : ", i + 1);
-            scanf("%d", &((*tableau)[i].pr));
-
-        } while ((*tableau)[i].pr < 0);
+            printf("Entrez la priorite du processus %d (entre 0 et 10 inclusivement) : ", i + 1);
+            if (scanf("%d", &((*tableau)[i].pr)) != 1 || (*tableau)[i].pr < 0 || (*tableau)[i].pr > 10)
+            {
+                printf("Veuillez entrer une valeur entière entre 0 et 10 pour la priorite.\n");
+                while (getchar() != '\n')
+                    ; // Clear input buffer
+            }
+        } while ((*tableau)[i].pr < 0 || (*tableau)[i].pr > 10);
 
         (*tableau)[i].NP = i + 1;
         (*tableau)[i].reste = (*tableau)[i].TE;
@@ -289,6 +306,7 @@ void executeProcesses(int nb_processus, process *tableau)
 
             else
             {
+                printf("%d\t| NONE\t\t| NONE\t\t| NONE\n", current_time);
                 current_time++;
             }
         }
