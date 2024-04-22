@@ -15,6 +15,7 @@ typedef struct process
     int reste;
     int completed;
     int NP;
+    int index;
 } process;
 
 typedef struct Node
@@ -56,6 +57,7 @@ void enqueue(Queue *q, process item)
         printf("Memory allocation failed.\n");
         exit(1);
     }
+
     newNode->data = item;
     newNode->next = NULL;
     newNode->prev = q->rear;
@@ -71,12 +73,40 @@ void enqueue(Queue *q, process item)
     q->rear = newNode;
 }
 
+void enqueueFront(Queue *q, process item)
+{
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    if (newNode == NULL)
+    {
+        printf("Memory allocation failed.\n");
+        exit(1);
+    }
+
+    newNode->data = item;
+    newNode->next = q->front;
+    newNode->prev = NULL;
+
+    if (isEmpty(q) == 1)
+    {
+        q->rear = newNode;
+    }
+    else
+    {
+        q->front->prev = newNode;
+    }
+
+    q->front = newNode;
+}
+
 process dequeue(Queue *q)
 {
     if (isEmpty(q) == 1)
     {
         printf("Queue is empty.\n");
-        exit(1);
+        process dummy;
+
+        dummy.DA = -1;
+        return dummy;
     }
     Node *temp = q->front;
     process item = temp->data;
@@ -90,6 +120,7 @@ process dequeue(Queue *q)
         q->front->prev = NULL;
     }
     free(temp);
+
     return item;
 }
 
@@ -194,12 +225,17 @@ void executeProcesses(int nb_processus, process *tableau)
 {
     int current_time = 0;
     int completed_processes = 0;
+    int n = 0;
     Queue queue1, queue2, queue3;
     initializeQueue(&queue1);
     initializeQueue(&queue2);
     initializeQueue(&queue3);
 
     process *sortedProcesses = sortProcessesByArrival(nb_processus, tableau);
+    for (int i = 0; i < nb_processus; i++)
+    {
+        sortedProcesses[i].index = i;
+    }
 
     process *initialProcesses = (process *)malloc(sizeof(process) * nb_processus);
     memcpy(initialProcesses, tableau, sizeof(process) * nb_processus);
@@ -208,108 +244,203 @@ void executeProcesses(int nb_processus, process *tableau)
     printf("Time\t| Process\t| Remaining\t| Completed\n");
     printf("------------------------------------------------\n");
 
-    while (completed_processes < nb_processus)
+    for (int k = 0; k < nb_processus; k++)
     {
 
-        for (int i = 0; i < nb_processus; i++)
+        if (initialProcesses[k].TE >= 0 && initialProcesses[k].TE <= 3 && sortedProcesses[k].reste > 0)
         {
-            if (sortedProcesses[i].DA <= current_time)
+            enqueue(&queue1, sortedProcesses[k]);
+            sortQueueByPriority(&queue1);
+        }
+        else if (initialProcesses[k].TE >= 4 && initialProcesses[k].TE <= 6 && sortedProcesses[k].reste > 0)
+        {
+            enqueue(&queue2, sortedProcesses[k]);
+            sortQueueByPriority(&queue2);
+        }
+        else if (initialProcesses[k].TE >= 7 && initialProcesses[k].TE <= 10 && sortedProcesses[k].reste > 0)
+        {
+            enqueue(&queue3, sortedProcesses[k]);
+            sortQueueByPriority(&queue3);
+        }
+    }
+
+    int f = 0;
+    int s = 0;
+    int h = 0;
+    while (completed_processes < nb_processus && f < 30)
+    {
+
+        if (isEmpty(&queue1) == 0)
+        {
+            process currentProcess = dequeue(&queue1);
+
+            if (sortedProcesses[currentProcess.index].DA <= current_time)
             {
-                if (initialProcesses[i].TE >= 0 && initialProcesses[i].TE <= 3 && sortedProcesses[i].reste > 0)
+
+                int k = 0;
+                int quantum = 1;
+                while (k < quantum && sortedProcesses[currentProcess.index].reste > 0)
                 {
-                    enqueue(&queue1, sortedProcesses[i]);
-                    sortQueueByPriority(&queue1);
-                    if (isEmpty(&queue1) == 0)
+                    currentProcess.reste--;
+                    sortedProcesses[currentProcess.index].completed++;
+                    sortedProcesses[currentProcess.index].reste--;
+                    printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[currentProcess.index].NP, sortedProcesses[currentProcess.index].reste, sortedProcesses[currentProcess.index].completed);
+                    k++;
+                    current_time++;
+                }
+                if (sortedProcesses[currentProcess.index].reste == 0)
+                {
+                    sortedProcesses[currentProcess.index].temfin = current_time;
+                    sortedProcesses[currentProcess.index].treponse = sortedProcesses[currentProcess.index].temfin - sortedProcesses[currentProcess.index].DA;
+                    sortedProcesses[currentProcess.index].tattant = sortedProcesses[currentProcess.index].treponse - sortedProcesses[currentProcess.index].TE;
+                    completed_processes++;
+                }
+                else
+                {
+                    process nextProcess = dequeue(&queue1);
+                    if (nextProcess.DA != -1)
                     {
-                        process currentProcess = dequeue(&queue1);
-                        int k = 0;
-                        int quantum = 1;
-                        while (k < quantum && sortedProcesses[i].reste > 0)
+                        if (nextProcess.DA > currentProcess.DA && nextProcess.DA > current_time)
                         {
-                            sortedProcesses[i].completed++;
-                            sortedProcesses[i].reste--;
-                            printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[i].NP, sortedProcesses[i].reste, sortedProcesses[i].completed);
-                            k++;
-                            current_time++;
+                            enqueueFront(&queue1, nextProcess);
+                            enqueueFront(&queue1, currentProcess);
                         }
-                        if (sortedProcesses[i].reste > 0)
+                        else
                         {
+                            enqueueFront(&queue1, nextProcess);
                             enqueue(&queue1, currentProcess);
                         }
-                        else
-                        {
-                            sortedProcesses[i].temfin = current_time;
-                            sortedProcesses[i].treponse = sortedProcesses[i].temfin - sortedProcesses[i].DA;
-                            sortedProcesses[i].tattant = sortedProcesses[i].treponse - sortedProcesses[i].TE;
-                            completed_processes++;
-                        }
                     }
-                }
-                else if (initialProcesses[i].TE >= 4 && initialProcesses[i].TE <= 6 && sortedProcesses[i].reste > 0)
-                {
 
-                    enqueue(&queue2, sortedProcesses[i]);
-                    sortQueueByPriority(&queue2);
-                    if (isEmpty(&queue2) == 0)
-                    {
-                        process currentProcess = dequeue(&queue2);
-                        int k = 0;
-                        int quantum = 2;
-                        while (k < quantum && sortedProcesses[i].reste > 0)
-                        {
-
-                            sortedProcesses[i].completed++;
-                            sortedProcesses[i].reste--;
-                            printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[i].NP, sortedProcesses[i].reste, sortedProcesses[i].completed);
-                            k++;
-                            current_time++;
-                        }
-                        if (sortedProcesses[i].reste > 0)
-                        {
-                            enqueue(&queue2, currentProcess);
-                        }
-                        else
-                        {
-                            completed_processes++;
-                        }
-                    }
-                }
-                else if (initialProcesses[i].TE >= 7 && initialProcesses[i].TE <= 10 && sortedProcesses[i].reste > 0)
-                {
-                    enqueue(&queue3, sortedProcesses[i]);
-                    sortQueueByPriority(&queue3);
-                    if (isEmpty(&queue3) == 0)
-                    {
-                        process currentProcess = dequeue(&queue3);
-                        int quantum = 3;
-                        int k = 0;
-                        while (k < quantum && sortedProcesses[i].reste > 0)
-                        {
-
-                            sortedProcesses[i].completed++;
-                            sortedProcesses[i].reste--;
-                            printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[i].NP, sortedProcesses[i].reste, sortedProcesses[i].completed);
-                            current_time++;
-                            k++;
-                        }
-                        if (sortedProcesses[i].reste > 0)
-                        {
-                            enqueue(&queue3, currentProcess);
-                        }
-                        else
-                        {
-                            completed_processes++;
-                        }
-                    }
+                    s++;
                 }
             }
-
             else
             {
-                printf("%d\t| NONE\t\t| NONE\t\t| NONE\n", current_time);
-                current_time++;
+                enqueueFront(&queue1, currentProcess);
+                n++;
             }
+
+            h++;
         }
+
+        if (isEmpty(&queue2) == 0)
+        {
+
+            process currentProcess = dequeue(&queue2);
+            if (sortedProcesses[currentProcess.index].DA <= current_time)
+            {
+
+                int k = 0;
+                int quantum = 2;
+                while (k < quantum && sortedProcesses[currentProcess.index].reste > 0)
+                {
+                    currentProcess.reste--;
+                    sortedProcesses[currentProcess.index].completed++;
+                    sortedProcesses[currentProcess.index].reste--;
+                    printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[currentProcess.index].NP, sortedProcesses[currentProcess.index].reste, sortedProcesses[currentProcess.index].completed);
+                    k++;
+                    current_time++;
+                }
+                if (sortedProcesses[currentProcess.index].reste == 0)
+                {
+                    sortedProcesses[currentProcess.index].temfin = current_time;
+                    sortedProcesses[currentProcess.index].treponse = sortedProcesses[currentProcess.index].temfin - sortedProcesses[currentProcess.index].DA;
+                    sortedProcesses[currentProcess.index].tattant = sortedProcesses[currentProcess.index].treponse - sortedProcesses[currentProcess.index].TE;
+                    completed_processes++;
+                }
+                else
+                {
+                    process nextProcess = dequeue(&queue2);
+                    if (nextProcess.DA != -1)
+                    {
+                        if (nextProcess.DA > currentProcess.DA && nextProcess.DA > current_time)
+                        {
+                            enqueueFront(&queue2, nextProcess);
+                            enqueueFront(&queue2, currentProcess);
+                        }
+                        else
+                        {
+                            enqueueFront(&queue2, nextProcess);
+                            enqueue(&queue2, currentProcess);
+                        }
+                    }
+                    s++;
+                }
+            }
+            else
+            {
+                enqueueFront(&queue2, currentProcess);
+                n++;
+            }
+            h++;
+        }
+
+        if (isEmpty(&queue3) == 0)
+        {
+
+            process currentProcess = dequeue(&queue3);
+            if (sortedProcesses[currentProcess.index].DA <= current_time)
+            {
+
+                int quantum = 3;
+                int k = 0;
+                while (k < quantum && sortedProcesses[currentProcess.index].reste > 0)
+                {
+                    currentProcess.reste--;
+                    sortedProcesses[currentProcess.index].completed++;
+                    sortedProcesses[currentProcess.index].reste--;
+                    printf("%d\t| %d\t\t| %d\t\t| %d\n", current_time, sortedProcesses[currentProcess.index].NP, sortedProcesses[currentProcess.index].reste, sortedProcesses[currentProcess.index].completed);
+                    k++;
+                    current_time++;
+                }
+                if (sortedProcesses[currentProcess.index].reste == 0)
+                {
+                    sortedProcesses[currentProcess.index].temfin = current_time;
+                    sortedProcesses[currentProcess.index].treponse = sortedProcesses[currentProcess.index].temfin - sortedProcesses[currentProcess.index].DA;
+                    sortedProcesses[currentProcess.index].tattant = sortedProcesses[currentProcess.index].treponse - sortedProcesses[currentProcess.index].TE;
+                    completed_processes++;
+                }
+                else
+                {
+                    s++;
+                    process nextProcess = dequeue(&queue3);
+                    if (nextProcess.DA != -1)
+                    {
+                        if (nextProcess.DA > currentProcess.DA && nextProcess.DA > current_time)
+                        {
+                            enqueueFront(&queue3, nextProcess);
+                            enqueueFront(&queue3, currentProcess);
+                        }
+                        else
+                        {
+                            enqueueFront(&queue3, nextProcess);
+                            enqueue(&queue3, currentProcess);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                enqueueFront(&queue3, currentProcess);
+                n++;
+            }
+
+            h++;
+        }
+
+        if (n == 5)
+        {
+            current_time++;
+            n = 0;
+        }
+
+        if (isEmpty(&queue1) == 1 && isEmpty(&queue2) == 1 && isEmpty(&queue3) == 1)
+        {
+            printf("%d\t| NONE\t\t| NONE\t\t| NONE\n", current_time);
+            current_time++;
+        }
+        f++;
     }
 }
 
